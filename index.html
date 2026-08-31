@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POM SAN | Physiological & Training Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-main: #0c0f14;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c222b;
+      --border-color: #262c36;
+      --text-main: #f0f6fc;
+      --text-muted: #8b949e;
+      --accent-green: #2ea043;
+      --accent-blue: #388bfd;
+      --accent-cyan: #39c5bb;
+      --accent-orange: #f0883e;
+      --accent-purple: #8957e5;
+      --accent-red: #fa4549;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .header-title h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header-title p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(46, 160, 67, 0.15);
+      border: 1px solid var(--accent-green);
+      color: #3fb950;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-badge::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background-color: var(--accent-green);
+      border-radius: 50%;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+    }
+
+    .kpi-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .kpi-unit {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
+
+    .kpi-delta {
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .delta-down { color: #3fb950; }
+    .delta-stable { color: #58a6ff; }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-title span {
+      font-size: 12px;
+      font-weight: normal;
+      color: var(--text-muted);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 240px;
+      width: 100%;
+    }
+
+    .activity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .activity-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: #0f1318;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+
+    .activity-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .activity-day {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .activity-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .activity-stats {
+      text-align: right;
+    }
+
+    .activity-hr {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-orange);
+    }
+
+    .activity-cal {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .full-width-card {
+      margin-bottom: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 500;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .badge-normal {
+      background: rgba(46, 160, 67, 0.15);
+      color: #3fb950;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .badge-high {
+      background: rgba(240, 136, 62, 0.15);
+      color: #f0883e;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="header-title">
+        <h1>POM SAN PHYSIOLOGICAL DASHBOARD</h1>
+        <p>35歳 男性 / デザイナー専属モニタリング（2026年8月 第4週）</p>
+      </div>
+      <div>
+        <div class="status-badge">Phase 1: 代謝適正化中（好調）</div>
+      </div>
+    </header>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">体重</div>
+        <div class="kpi-value">71.10<span class="kpi-unit">kg</span></div>
+        <div class="kpi-delta delta-down">▼ 0.90 kg (週初比)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">体脂肪率</div>
+        <div class="kpi-value">21.9<span class="kpi-unit">%</span></div>
+        <div class="kpi-delta delta-down">▼ 0.8% (正常判定入り)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">体脂肪量</div>
+        <div class="kpi-value">15.50<span class="kpi-unit">kg</span></div>
+        <div class="kpi-delta delta-down">▼ 1.50 kg (純脂肪減)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">骨格筋量</div>
+        <div class="kpi-value">28.80<span class="kpi-unit">kg</span></div>
+        <div class="kpi-delta delta-stable">● 筋量完全維持</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">皮下脂肪率</div>
+        <div class="kpi-value">19.1<span class="kpi-unit">%</span></div>
+        <div class="kpi-delta delta-down">▼ 1.2% (19%台突入)</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">体内年齢</div>
+        <div class="kpi-value">36<span class="kpi-unit">歳</span></div>
+        <div class="kpi-delta delta-down">▼ 1歳若返り</div>
+      </div>
+    </div>
+
+    <!-- Charts Section 1 -->
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-title">
+          体組成推移（体重・体脂肪量・骨格筋量）
+          <span>2026.08.24 - 08.30</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="bodyCompChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          アクティビティ履歴
+          <span>エクササイズ 7/7日達成</span>
+        </div>
+        <div class="activity-list">
+          <div class="activity-item">
+            <div class="activity-info">
+              <div class="activity-day">8/30 (日) 夫婦ウォーキング</div>
+              <div class="activity-desc">70分 / 4.26km / ゾーン1</div>
+            </div>
+            <div class="activity-stats">
+              <div class="activity-hr">96 bpm</div>
+              <div class="activity-cal">347 kcal</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-info">
+              <div class="activity-day">8/29 (土) 筋トレ＋ペース走</div>
+              <div class="activity-desc">47分 / 1.66km / ゾーン2〜3</div>
+            </div>
+            <div class="activity-stats">
+              <div class="activity-hr">136 bpm</div>
+              <div class="activity-cal">296 kcal</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-info">
+              <div class="activity-day">8/28 (金) 筋トレ＋ゾーン2ラン</div>
+              <div class="activity-desc">45分 / 2.48km / ゾーン2</div>
+            </div>
+            <div class="activity-stats">
+              <div class="activity-hr">117 bpm</div>
+              <div class="activity-cal">259 kcal</div>
+            </div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-info">
+              <div class="activity-day">8/27 (木) 整体＋EMS＋負荷トレ</div>
+              <div class="activity-desc">54分 / 骨格調整＆深層筋刺激</div>
+            </div>
+            <div class="activity-stats">
+              <div class="activity-hr">87 bpm</div>
+              <div class="activity-cal">245 kcal</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Section 2: Sleep & Details -->
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-title">
+          睡眠ステージ推移（深い睡眠・レム・コア）
+          <span>Apple Health Log</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="sleepChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          生化学・自律神経ステータス
+          <span>トレーナー分析</span>
+        </div>
+        <div style="font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 10px;">
+          <div>
+            <strong style="color: var(--text-main);">・ミトコンドリア活性度：高</strong><br>
+            ゾーン2低心拍走の継続により、バルプロ酸による代謝低下を克服し脂肪燃焼効率が向上。
+          </div>
+          <div>
+            <strong style="color: var(--text-main);">・安静時心拍数：49〜58 bpm</strong><br>
+            睡眠中の心拍数が極めて低く安定しており、心血管系の休息は完璧に完了。
+          </div>
+          <div>
+            <strong style="color: var(--text-main);">・今週のフォーカス</strong><br>
+            睡眠リズムの再同期（23時台入眠）と、主食・亜鉛・良質なタンパク質の定着。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detailed Table -->
+    <div class="card full-width-card">
+      <div class="card-title">日次測定バイタルログ</div>
+      <table>
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>体重</th>
+            <th>体脂肪率</th>
+            <th>体脂肪量</th>
+            <th>皮下脂肪</th>
+            <th>骨格筋量</th>
+            <th>基礎代謝</th>
+            <th>測定時心拍</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>8/24 (月)</td>
+            <td>72.00 kg</td>
+            <td><span class="badge-high">22.7%</span></td>
+            <td>-</td>
+            <td>-</td>
+            <td>28.90 kg</td>
+            <td>1513 kcal</td>
+            <td>-</td>
+          </tr>
+          <tr>
+            <td>8/25 (火)</td>
+            <td>73.20 kg</td>
+            <td><span class="badge-high">23.3%</span></td>
+            <td>17.00 kg</td>
+            <td>20.3%</td>
+            <td>29.20 kg</td>
+            <td>1531 kcal</td>
+            <td>120 bpm</td>
+          </tr>
+          <tr>
+            <td>8/26 (水)</td>
+            <td>72.50 kg</td>
+            <td><span class="badge-high">22.9%</span></td>
+            <td>16.60 kg</td>
+            <td>20.1%</td>
+            <td>29.00 kg</td>
+            <td>1520 kcal</td>
+            <td>104 bpm</td>
+          </tr>
+          <tr>
+            <td>8/27 (木)</td>
+            <td>73.40 kg</td>
+            <td><span class="badge-high">23.5%</span></td>
+            <td>17.20 kg</td>
+            <td>20.5%</td>
+            <td>29.20 kg</td>
+            <td>1534 kcal</td>
+            <td>109 bpm</td>
+          </tr>
+          <tr>
+            <td>8/28 (金)</td>
+            <td>72.30 kg</td>
+            <td><span class="badge-high">22.7%</span></td>
+            <td>16.40 kg</td>
+            <td>19.8%</td>
+            <td>29.10 kg</td>
+            <td>1517 kcal</td>
+            <td>113 bpm</td>
+          </tr>
+          <tr>
+            <td>8/29 (土)</td>
+            <td>72.20 kg</td>
+            <td><span class="badge-high">22.8%</span></td>
+            <td>16.40 kg</td>
+            <td>19.9%</td>
+            <td>28.90 kg</td>
+            <td>1516 kcal</td>
+            <td>110 bpm</td>
+          </tr>
+          <tr>
+            <td><strong>8/30 (日)</strong></td>
+            <td><strong>71.10 kg</strong></td>
+            <td><span class="badge-normal">21.9%</span></td>
+            <td><strong>15.50 kg</strong></td>
+            <td><strong>19.1%</strong></td>
+            <td>28.80 kg</td>
+            <td>1500 kcal</td>
+            <td>110 bpm</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Body Composition Chart
+    const ctxComp = document.getElementById('bodyCompChart').getContext('2d');
+    new Chart(ctxComp, {
+      type: 'line',
+      data: {
+        labels: ['8/25 (火)', '8/26 (水)', '8/27 (木)', '8/28 (金)', '8/29 (土)', '8/30 (日)'],
+        datasets: [
+          {
+            label: '体重 (kg)',
+            data: [73.2, 72.5, 73.4, 72.3, 72.2, 71.1],
+            borderColor: '#58a6ff',
+            backgroundColor: 'rgba(88, 166, 255, 0.1)',
+            tension: 0.3,
+            borderWidth: 2,
+            pointRadius: 4,
+            yAxisID: 'y'
+          },
+          {
+            label: '体脂肪量 (kg)',
+            data: [17.0, 16.6, 17.2, 16.4, 16.4, 15.5],
+            borderColor: '#f0883e',
+            backgroundColor: 'transparent',
+            tension: 0.3,
+            borderWidth: 2,
+            borderDash: [4, 4],
+            pointRadius: 3,
+            yAxisID: 'y'
+          },
+          {
+            label: '骨格筋量 (kg)',
+            data: [29.2, 29.0, 29.2, 29.1, 28.9, 28.8],
+            borderColor: '#3fb950',
+            backgroundColor: 'transparent',
+            tension: 0.3,
+            borderWidth: 2,
+            pointRadius: 3,
+            yAxisID: 'y'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#8b949e', font: { size: 12 } }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#8b949e' }
+          },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#8b949e' },
+            min: 14,
+            max: 75
+          }
+        }
+      }
+    });
+
+    // Sleep Stacked Bar Chart
+    const ctxSleep = document.getElementById('sleepChart').getContext('2d');
+    new Chart(ctxSleep, {
+      type: 'bar',
+      data: {
+        labels: ['8/27 (木)', '8/28 (金)', '8/29 (土)', '8/30 (日)', '8/31 (月)'],
+        datasets: [
+          {
+            label: '深い睡眠 (h)',
+            data: [1.27, 2.03, 2.10, 0.82, 0.60],
+            backgroundColor: '#8957e5'
+          },
+          {
+            label: 'コア睡眠 (h)',
+            data: [5.67, 4.12, 5.10, 5.27, 3.18],
+            backgroundColor: '#388bfd'
+          },
+          {
+            label: 'レム睡眠 (h)',
+            data: [2.27, 2.25, 2.47, 1.82, 1.48],
+            backgroundColor: '#39c5bb'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#8b949e', font: { size: 12 } }
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#8b949e' }
+          },
+          y: {
+            stacked: true,
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: '#8b949e' },
+            title: { display: true, text: '時間 (hours)', color: '#8b949e' }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
